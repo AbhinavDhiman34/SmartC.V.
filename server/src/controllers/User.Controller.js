@@ -107,3 +107,28 @@ export const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logged out"))
 
 });
+
+export const deleteResume = asyncHandler(async (req, res) => {
+  const resumeId = req.params.id;
+  const userId = req.user._id;
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const resumeIndex = user.resumes.findIndex(
+    (resume) => resume._id.toString() === resumeId
+  );
+
+  if (resumeIndex === -1) {
+    throw new ApiError(404, "Resume not found");
+  }
+
+  user.resumes.splice(resumeIndex, 1); // Remove the resume from array
+  await user.save();
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Resume deleted successfully"));
+});

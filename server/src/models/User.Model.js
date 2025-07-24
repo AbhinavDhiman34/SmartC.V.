@@ -13,9 +13,20 @@ const userSchema = new mongoose.Schema(
     atsUsage: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
     refreshToken: String,
+
+    resumes: [
+      {
+        _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
+        title: { type: String },
+        fileUrl: { type: String }, // or file content or path
+        uploadedAt: { type: Date, default: Date.now }
+      }
+    ]
   },
   { timestamps: true }
 );
+
+
 
 // Password hash and compare logic as in Agent/Client
 userSchema.pre("save", async function (next) {
