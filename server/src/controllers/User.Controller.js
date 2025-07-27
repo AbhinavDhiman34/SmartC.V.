@@ -3,6 +3,7 @@ import { User } from "../models/User.Model.js";
 import { generateAccessAndRefreshToken } from "../utils/GenerateAccessAndRefreshToken.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResposne.js";
+import { Resume } from "../models/Resume.Model.js";
 
 // register user api
 export const registerUser = asyncHandler(async (req, res) => {
@@ -129,4 +130,97 @@ export const logoutAllDevices = asyncHandler(async (req, res) => {
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
     .json(new ApiResponse(200, {}, "Logged out from all devices"));
+});
+
+
+// getting all resumes for particular Users
+export const getAllResumes = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized request");
+  }
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  const totalResumes = await Resume.countDocuments({ userId });
+
+  const resumes = await Resume.find({ userId })
+    .sort({ updatedAt: -1 }) // most recent first
+    .skip(skip)
+    .limit(limit)
+    .lean(); // returns plain JS objects
+
+  return res
+    .status(200)
+    .set({
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    })
+    .json(
+      new ApiResponse(
+        200,
+        {
+          resumes,
+          pagination: {
+            total: totalResumes,
+            page,
+            limit,
+            totalPages: Math.ceil(totalResumes / limit),
+            hasNextPage: skip + resumes.length < totalResumes,
+          },
+        },
+        "Resumes retrieved successfully"
+      )
+    );
+});
+
+
+// add resume 
+
+export const addResume = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized request");
+  }
+
+  const {
+    fullName,
+    email,
+    phone,
+    summary,
+    experience,
+    education,
+    skills,
+    projects,
+    certifications,
+    socialLinks,
+    theme
+  } = req.body;
+
+  if (!fullName || !email || !phone || !summary) {
+    throw new ApiError(400, "Missing required resume fields");
+  }
+
+  const resume = await Resume.create({
+    userId,
+    fullName,
+    email,
+    phone,
+    summary,
+    experience,
+    education,
+    skills,
+    projects,
+    certifications,
+    socialLinks,
+    theme
+  });
+
+  return res.status(201).json(
+    new ApiResponse(201, resume, "Resume added successfully")
+  );
 });
